@@ -39,7 +39,7 @@ heatmap.2(y,Colv=as.dendrogram(c1),
 Rowv=as.dendrogram(c2),density.info="histogram",
 trace="none",col = my_palette,cexRow=0.5,cexCol=0.75)
 
- Open a file for pdf
+ #Open a file for pdf
 pdf(file="my_heatmap.pdf",paper = "a4") 
 par(cex.main=0.75) # Shrink title fonts
 heatmap.2(dat.tn, Colv=as.dendrogram(c1), Rowv=as.dendrogram(c2), 
