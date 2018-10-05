@@ -1,0 +1,189 @@
+# ==========================================================
+#
+#      Lesson 8 -- Heatmaps
+#      •   Dendrograms
+#      •   To cluster or not to cluster
+#      •   Flipping axes
+#      •   Specifying distance calculation and clustering methods
+#      •   Annotate sides of heatmap with associated data
+#          (chromosomes, genders, samples)
+#      •   Coloring branches in dendrograms
+#
+# ==========================================================
+# The ComplexHeatmap package is downloaded from the bioconductor website, not from the packages tab like we did with the other packages
+# https://bioconductor.org/packages/release/bioc/html/ComplexHeatmap.html
+
+# Run the first time to install:
+source("https://bioconductor.org/biocLite.R")
+biocLite("ComplexHeatmap")
+
+library(ComplexHeatmap)
+library(RColorBrewer)
+
+# Heatmap from single-cell copy number data
+
+# Select a data file
+filename <- "/Users/manuelamania/Google Drive/campo's lab/tesi master/heatmaps mgus/mgus_sano_2fc_141.csv"
+
+# Read the data into a data.frame
+my_data <-
+  read.table(
+    filename,
+    sep = ";",
+    quote = "",
+    stringsAsFactors = FALSE,
+    header = TRUE,
+    comment.char = "#"
+  )
+
+head(my_data)
+
+dim(my_data) # (rows columns)
+
+nrow(my_data) # rows: miRNA
+ncol(my_data) # columns: groups
+
+# Make the heatmap data into a matrix
+my_matrix <-
+  as.matrix(my_data[, 2:3]) # [all rows, columns 2-3]
+
+# We can check the classes:
+class(my_data)
+class(my_matrix)
+
+head(my_matrix)
+
+# Save chromosome column for annotating the heatmap later
+mirna_info <- data.frame(mirna = my_data$miRNA.ID)
+mirna_info
+
+## Now we make our first heatmap
+
+# Default parameters
+Heatmap(my_matrix)
+
+# Flip rows and columns around
+my_matrix <- t(my_matrix)  # "transpose"
+Heatmap(my_matrix)
+
+# Keep genome bins in order, not clustered
+
+# creates a own color palette from red to green
+my_palette <- colorRampPalette(c("red", "yellow", "green"))(n = 299)
+
+# (optional) defines the color breaks manually for a "skewed" color transition
+col_breaks = c(seq(-1, 0, length = 100),
+               # for red
+               seq(0, 0.7, length = 100),
+               # for yellow
+               seq(0.7, 1, length = 100))              
+               # for green
+
+
+Heatmap(
+  my_matrix,
+  cluster_columns = FALSE,
+  cluster_rows = TRUE,
+  color_space = "my_palette"
+)
+
+fontsize <- 0.5
+
+# Put cell labels on the left side
+Heatmap(
+  my_matrix,
+  cluster_columns = FALSE,
+  row_names_side = "left",
+  row_hclust_side = "left",
+  row_names_gp = gpar(cex = fontsize)
+)
+
+# Make the dendrogram wider
+Heatmap(
+  my_matrix,
+  cluster_columns = FALSE,
+  row_names_side = "left",
+  row_hclust_side = "left",
+  row_names_gp = gpar(cex = fontsize),
+  row_hclust_width = unit(3, "cm")
+)
+
+# Different distance calculation methods
+# "euclidean", "maximum", "manhattan", "canberra", "binary", "minkowski", "pearson", "spearman", "kendall"
+# euclidean is the default
+
+# Different clustering methods
+# "ward.D", "ward.D2", "single", "complete", "average" (= UPGMA), "mcquitty" (= WPGMA), "median" (= WPGMC) or "centroid" (= UPGMC)
+
+# Watch the dendrogram and heatmap change when we change the methods
+Heatmap(
+  my_matrix,
+  cluster_columns = FALSE,
+  row_names_side = "left",
+  row_hclust_side = "left",
+  row_names_gp = gpar(cex = fontsize),
+  row_hclust_width = unit(10, "cm"),
+  clustering_distance_rows = "maximum",
+  clustering_method_rows = "ward.D"
+)
+
+# Coloring clusters in dendrogram
+my_palette <- colorRampPalette(colors, "green", "yellow", "red", n = 299)
+
+# install dendextend
+library(dendextend)
+# Need to build dendrogram first so we can use it for the color_brances() function
+# 1. calculate distances (method="maximum")
+# 2. cluster (method="ward.D")
+dend = hclust(dist(my_matrix, method = "maximum"), method = "ward.D")
+
+Heatmap(
+  my_matrix,
+  cluster_columns = FALSE,
+  row_names_side = "left",
+  row_hclust_side = "left",
+  row_names_gp = gpar(cex = fontsize),
+  row_hclust_width = unit(3, "cm"),
+  cluster_rows = color_branches(dend, k = 3)
+)
+
+# We can split the heatmap into clusters
+
+Heatmap(
+  my_matrix,
+  cluster_columns = FALSE,
+  row_names_side = "left",
+  row_hclust_side = "left",
+  row_names_gp = gpar(cex = fontsize),
+  row_hclust_width = unit(3, "cm"),
+  clustering_distance_rows = "maximum",
+  clustering_method_rows = "ward.D",
+  km = 2
+) # number of clusters you want
+
+# Split columns of plot up into chromosomes using extra_info
+mirna_info
+
+mirna.colors <- c(rep(c("black", "white"), 141), "red")
+mirna.colors
+
+names(mirna.colors) <- paste(mirna_info, c(seq(1, 141)), sep = "")
+mirna.colors
+
+Heatmap(
+  my_matrix,
+  cluster_columns = FALSE,
+  row_names_side = "left",
+  row_dend_side = "left",
+  row_names_gp = gpar(cex = fontsize),
+  row_dend_width = unit(10, "cm"),
+  clustering_distance_rows = "maximum",
+  clustering_method_rows = "ward.D",
+  km = 2,
+  # number of clusters you want
+  bottom_annotation = HeatmapAnnotation(
+    mirna_info,
+    col = list(mirna = mirna.colors),
+    show_legend = TRUE
+  )
+)
